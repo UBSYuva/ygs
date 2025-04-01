@@ -6,11 +6,15 @@ using Google.Apis.Sheets.v4.Data;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using System.Data;
 using System.Text;
+using System.Globalization;
 
 namespace UBS_MemberData.Pages;
 
 public class IndexModel : PageModel
 {
+
+    int associationFee = 100;
+
     private readonly ILogger<IndexModel> _logger;
     static DataTable dtMemberList = new DataTable();
 
@@ -24,8 +28,7 @@ public class IndexModel : PageModel
     [BindProperty]
     public string month { get; set; }
     [BindProperty]
-    public bool defaultDate { get; set; }
-
+    public string monthTo { get; set; }    
     [BindProperty]
     public string Password { get; set; }
 
@@ -35,8 +38,6 @@ public class IndexModel : PageModel
         {
             // Process the input value
             var password = this.Password;
-
-            if (defaultDate) paidDate = DateTime.Now;
 
             //string htmlContent = "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"UTF-8\"><title>Association Fee Invoice - March 2025</title><style>body{font-family:Arial,sans-serif;margin:0;padding:20px}.invoice-container{max-width:800px;margin:0 auto;border:1px solid #ccc;padding:20px;background-color:#f9f9f9}h1{text-align:center;color:#333}.invoice-details,.items-table{width:100%;margin-bottom:20px}.invoice-details td{padding:10px;border:1px solid #ccc}.items-table td,.items-table th{padding:10px;text-align:center;border:1px solid #ccc}.total{text-align:right;font-size:18px;font-weight:700}</style></head><body><div class=\"invoice-container\"><h1>Association Fee Invoice</h1><table class=\"invoice-details\"><tr><td><strong>Name</strong></td><td>#name#</td></tr><tr><td><strong>House No.</strong></td><td>#house-no#</td></tr><tr><td><strong>Month</strong></td><td>#month#</td></tr><tr><td><strong>Amount</strong></td><td>#amount#</td></tr><tr><td><strong>Paid Date</strong></td><td>#paid-date#</td></tr></table><div>The Association Committee sincerely thanks you for your unwavering support in the development of <b>Yogeshwar Nagar Society</b>.</div><div style=\"padding-top:30px\"><div>Thanks & Regards,</div><div style=\"padding-top:5px\">Yogeshwar Nagar Committee</div></div></div></body></html>";
             string htmlContent = System.IO.File.ReadAllText("./wwwroot/Sample.html");
@@ -49,12 +50,16 @@ public class IndexModel : PageModel
 
                     if (row.Length > 0 && row[0]["Name"] != null || memberName != null)
                     {
+                        int monthDiff = MonthDifference(month, monthTo);
+                        string monthRange = (month.Equals(monthTo, StringComparison.InvariantCultureIgnoreCase)) ? $"{month}, {DateTime.Now.ToString("yyyy")}" :
+                            $"{month}, {DateTime.Now.ToString("yyyy")}  -  {monthTo}, {DateTime.Now.ToString("yyyy")}";
+
                         var name = memberName ?? row[0]["Name"].ToString();
                         htmlContent = htmlContent.Replace("#name#", name);
                         htmlContent = htmlContent.Replace("#house-no#", houseNo);
-                        htmlContent = htmlContent.Replace("#month#", $"{month}, {DateTime.Now.ToString("yyyy")}");
+                        htmlContent = htmlContent.Replace("#month#", monthRange);
                         htmlContent = htmlContent.Replace("#paid-date#", paidDate.ToString("dd-MMM-yyyy"));
-                        htmlContent = htmlContent.Replace("#amount#", "100");
+                        htmlContent = htmlContent.Replace("#amount#", (associationFee * monthDiff).ToString());
 
                         // Create the HTML-to-PDF converter
                         //var converter = new BasicConverter(new PdfTools());
@@ -101,21 +106,27 @@ public class IndexModel : PageModel
         }
     }
 
-    static string HtmlToBase64(string html)
-    {
-        byte[] bytes = Encoding.UTF8.GetBytes(html);
-        return Convert.ToBase64String(bytes);
-    }
-
     public IndexModel(ILogger<IndexModel> logger)
     {
         _logger = logger;
+    }
+
+    static int MonthDifference(string month1, string month2)
+    {
+        // Convert month names to numbers using DateTimeFormatInfo
+        int m1 = DateTime.ParseExact(month1, "MMMM", CultureInfo.InvariantCulture).Month;
+        int m2 = DateTime.ParseExact(month2, "MMMM", CultureInfo.InvariantCulture).Month;
+
+        // Compute absolute difference
+        return Math.Abs(m1 - m2) + 1;
     }
 
     public async Task OnGet()
     {
         dtMemberList = await GetMemberdataFromSheet();
         TempData["defaultDateTime"] = DateTime.Now.ToString("yyyy-MM-dd");
+        this.month = DateTime.Now.ToString("MMMM");
+        this.monthTo = DateTime.Now.ToString("MMMM");
     }
 
     async Task<DataTable> GetMemberdataFromSheet()
