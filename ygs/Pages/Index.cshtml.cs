@@ -28,7 +28,11 @@ public class IndexModel : PageModel
     [BindProperty]
     public string month { get; set; }
     [BindProperty]
-    public string monthTo { get; set; }    
+    public string monthTo { get; set; }
+    [BindProperty]
+    public string year { get; set; }
+    [BindProperty]
+    public string yearTo { get; set; }
     [BindProperty]
     public string Password { get; set; }
 
@@ -52,7 +56,7 @@ public class IndexModel : PageModel
                     {
                         int monthDiff = MonthDifference(month, monthTo);
                         string monthRange = (month.Equals(monthTo, StringComparison.InvariantCultureIgnoreCase)) ? $"{month}, {DateTime.Now.ToString("yyyy")}" :
-                            $"{month}, {DateTime.Now.ToString("yyyy")}  -  {monthTo}, {DateTime.Now.ToString("yyyy")}";
+                            $"{month}, {year}  -  {monthTo}, {yearTo}";
 
                         var name = memberName ?? row[0]["Name"].ToString();
                         htmlContent = htmlContent.Replace("#name#", name);
@@ -118,7 +122,8 @@ public class IndexModel : PageModel
         int m2 = DateTime.ParseExact(month2, "MMMM", CultureInfo.InvariantCulture).Month;
 
         // Compute absolute difference
-        return Math.Abs(m1 - m2) + 1;
+        //return Math.Abs(m1 - m2) + 1;
+        return m1 > m2 ? (13 - Math.Abs(m2 - m1)) : Math.Abs(m1 - m2) + 1;
     }
 
     public async Task OnGet()
@@ -127,6 +132,8 @@ public class IndexModel : PageModel
         TempData["defaultDateTime"] = DateTime.Now.ToString("yyyy-MM-dd");
         this.month = DateTime.Now.ToString("MMMM");
         this.monthTo = DateTime.Now.ToString("MMMM");
+        this.year = DateTime.Now.ToString("yyyy");
+        this.yearTo = DateTime.Now.ToString("yyyy");
     }
 
     async Task<DataTable> GetMemberdataFromSheet()
